@@ -1,322 +1,349 @@
-<head>
+<!DOCTYPE html>
+<html lang="en" >
+  <head>
     <title>MTR</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta charset="utf-8">
-    <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta charset="utf-8" />
+    <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css" />
     <script src="js/bootstrap.min.js"></script>
 
-
     <script src="js/jquery-3.7.1.min.js"></script>
+  </head>
 
-</head>
-
-<body>
+  <body>
     <div class="container p-3">
-        <h1 class="display-3">港鐵月台資訊顯示</h1>
-        <h4 id="stationName"></h4>
-        <div id="mtr_time"></div>
+      <h1 class="display-3">港鐵月台資訊顯示</h1>
+      <h4 id="stationName"></h4>
+      <div id="mtr_time"></div>
     </div>
-</body>
+  </body>
+</html>
 <script>
-    // Function to fetch and parse CSV data
+  
+  // Function to fetch and parse CSV data
+  if (
+    window.matchMedia &&
+    window.matchMedia("(prefers-color-scheme: dark)").matches
+  ) {
+    $("html").attr("data-bs-theme", "dark");
+  }
 
-    var mtrStationsData = null;
-    var routeData = null;
-    async function loadCSV(url) {
-        try {
-            const response = await fetch(url);
-            const text = await response.text();
+  var mtrStationsData = null;
+  var routeData = null;
+  async function loadCSV(url) {
+    try {
+      const response = await fetch(url);
+      const text = await response.text();
 
-            // Split rows and parse into an array of objects
-            const rows = text.split('\n').map(row => {
-                return row.split(',').map(cell => {
-                    // Remove outer quotation marks unless the string contains a comma
-                    if (cell.startsWith('"') && cell.endsWith('"')) {
-                        const inner = cell.slice(1, -1); // Remove the outer quotes
-                        if (!inner.includes(',')) {
-                            return inner; // Return without quotes if no comma inside
-                        }
-                    }
-                    return cell; // Return the cell as is
-                });
-            });
-
-            const headers = rows.shift();
-            const assocRows = rows
-                .filter(row => row.length === headers.length)
-                .map(row => Object.fromEntries(row.map((value, index) => [headers[index], value])));
-
-            return assocRows;
-        } catch (error) {
-            console.error("Failed to load the CSV file:", error);
-            return [];
-        }
-    }
-
-    // Function to fetch and parse JSON data
-    async function loadJSON(url) {
-        try {
-            const response = await fetch(url);
-            const jsonData = await response.json();
-            return jsonData;
-        } catch (error) {
-            console.error("Failed to load the JSON file:", error);
-            return null;
-        }
-    }
-
-    function reloadStation(route) {
-        var stationName = [];
-        mtrStationsData.forEach(function(element) {
-            const stationExists = stationName.some(
-                (e) => e["value"] === element["Station Code"]
-            );
-            if (element["Line Code"] === route && !stationExists) {
-                stationName.push({
-                    value: element["Station Code"],
-                    text: element["Chinese Name"],
-                });
+      // Split rows and parse into an array of objects
+      const rows = text.split("\n").map((row) => {
+        return row.split(",").map((cell) => {
+          // Remove outer quotation marks unless the string contains a comma
+          if (cell.startsWith('"') && cell.endsWith('"')) {
+            const inner = cell.slice(1, -1); // Remove the outer quotes
+            if (!inner.includes(",")) {
+              return inner; // Return without quotes if no comma inside
             }
+          }
+          return cell; // Return the cell as is
         });
-        jQuery("#stations").empty();
-        jQuery("#stations").append(
-            jQuery($("<option>", {
-                value: ""
-            }).append("Please Select"))
+      });
+
+      const headers = rows.shift();
+      const assocRows = rows
+        .filter((row) => row.length === headers.length)
+        .map((row) =>
+          Object.fromEntries(row.map((value, index) => [headers[index], value]))
         );
-        stationName.forEach(function(station) {
-            jQuery("#stations").append(
-                jQuery("<option>", {
-                    value: station["value"]
-                }).text(station["text"])
-            );
+
+      return assocRows;
+    } catch (error) {
+      console.error("Failed to load the CSV file:", error);
+      return [];
+    }
+  }
+
+  // Function to fetch and parse JSON data
+  async function loadJSON(url) {
+    try {
+      const response = await fetch(url);
+      const jsonData = await response.json();
+      return jsonData;
+    } catch (error) {
+      console.error("Failed to load the JSON file:", error);
+      return null;
+    }
+  }
+
+  function reloadStation(route) {
+    var stationName = [];
+    mtrStationsData.forEach(function (element) {
+      const stationExists = stationName.some(
+        (e) => e["value"] === element["Station Code"]
+      );
+      if (element["Line Code"] === route && !stationExists) {
+        stationName.push({
+          value: element["Station Code"],
+          text: element["Chinese Name"],
         });
+      }
+    });
+    jQuery("#stations").empty();
+    jQuery("#stations").append(
+      jQuery(
+        $("<option>", {
+          value: "",
+        }).append("Please Select")
+      )
+    );
+    stationName.forEach(function (station) {
+      jQuery("#stations").append(
+        jQuery("<option>", {
+          value: station["value"],
+        }).text(station["text"])
+      );
+    });
 
-        // window.location.href = window.location.pathname + "?" + jQuery.param({
-        //     line: jQuery("#route").val(),
-        //     sta: jQuery("#stations").val()
-        // })
+    // window.location.href = window.location.pathname + "?" + jQuery.param({
+    //     line: jQuery("#route").val(),
+    //     sta: jQuery("#stations").val()
+    // })
 
-        console.log(jQuery("#stations").val());
+    console.log(jQuery("#stations").val());
+  }
 
+  async function initialize() {
+    const csvURL = "mtr_lines_and_stations.csv"; // Replace with the actual CSV file URL
+    const jsonURL = "routes.json"; // Replace with the actual JSON file URL
 
+    // Fetch CSV and JSON data
+    mtrStationsData = await loadCSV(csvURL);
+    routeData = await loadJSON(jsonURL);
+
+    // Example: Log data to console
+    console.log(mtrStationsData);
+    console.log(routeData);
+
+    // Example: Set station name dynamically
+    const stationID = "600"; // Replace with dynamic stationID if necessary
+    const stationData = mtrStationsData.find(
+      (row) => row["StationID"] === stationID
+    );
+    if (stationData) {
+      document.getElementById("stationName").textContent =
+        stationData["NameChi"].trim();
     }
 
-    async function initialize() {
-        const csvURL = 'mtr_lines_and_stations.csv'; // Replace with the actual CSV file URL
-        const jsonURL = 'routes.json'; // Replace with the actual JSON file URL
+    var lineName = [];
 
-        // Fetch CSV and JSON data
-        mtrStationsData = await loadCSV(csvURL);
-        routeData = await loadJSON(jsonURL);
+    mtrStationsData.forEach(function (element) {
+      if (lineName.includes(element["Line Code"]) == false) {
+        lineName.push(element["Line Code"].trim());
+      }
+    });
+    console.log(lineName);
+    jQuery("#mtr_time").append(
+      jQuery("<select>", {
+        id: "route",
+        name: "route",
+        class: "form-select",
+      })
+    );
+    jQuery("#mtr_time").append(
+      jQuery("<select>", {
+        id: "stations",
+        name: "stations",
+        class: "form-select",
+      })
+    );
+    jQuery("#route").append(
+      $("<option>", {
+        value: "",
+      }).append("Please Select")
+    );
+    lineName.forEach(function (element) {
+      console.log(element);
+      console.log(routeData.routes.find((r) => r["short"] == element));
+      jQuery("#route").append(
+        jQuery("<option>", {
+          value: element,
+        }).text(routeData.routes.find((r) => r.short == element)["nameChi"])
+      );
+    });
 
-        // Example: Log data to console
-        console.log(mtrStationsData);
-        console.log(routeData);
+    jQuery("#route").change(function () {
+      reloadStation($(this).val());
+    });
+    $("#stations").change(function () {
+      //document.title = $(this).options[$(this).selectedIndex].text;
+      document.title = $("#stations option:selected").text() + "MTR";
+      mtr({
+        line: jQuery("#route").val(),
+        sta: jQuery("#stations").val(),
+      });
+      history.pushState(
+        "",
+        "",
+        "?" +
+          jQuery.param({
+            line: jQuery("#route").val(),
+            sta: jQuery("#stations").val(),
+          })
+      );
 
-        // Example: Set station name dynamically
-        const stationID = "600"; // Replace with dynamic stationID if necessary
-        const stationData = mtrStationsData.find(row => row["StationID"] === stationID);
-        if (stationData) {
-            document.getElementById("stationName").textContent = stationData["NameChi"].trim();
-        }
+      console.log(stationName);
+    });
+    const urlParams = new URLSearchParams(window.location.search);
+    const line = urlParams.get("line");
+    const sta = urlParams.get("sta");
 
+    if (line && sta) {
+      // Check that both parameters exist and are not empty
+      document.getElementById("route").value = line;
+      reloadStation(line);
+      document.getElementById("stations").value = sta;
 
-
-
-        var lineName = [];
-
-        mtrStationsData.forEach(function(element) {
-            if (lineName.includes(element["Line Code"]) == false) {
-                lineName.push(element["Line Code"].trim());
-            }
-        });
-        console.log(lineName);
-        jQuery("#mtr_time").append(
-            jQuery("<select>", {
-                id: "route",
-                name: "route",
-                class: "form-select"
-            })
-        );
-        jQuery("#mtr_time").append(
-            jQuery("<select>", {
-                id: "stations",
-                name: "stations",
-                class: "form-select"
-
-            })
-        );
-        jQuery("#route").append($("<option>", {
-            value: ""
-        }).append("Please Select"));
-        lineName.forEach(function(element) {
-            console.log(element);
-            console.log(routeData.routes.find(r => r['short'] == element));
-            jQuery("#route").append(
-                jQuery("<option>", {
-                    value: element
-                }).text(routeData.routes.find(r => r.short == element)['nameChi'])
-            );
-        });
-
-
-
-
-
-
-        jQuery("#route").change(function() {
-
-            reloadStation($(this).val());
-
-        });
-        $("#stations").change(function() {
-            mtr({
-                'line': jQuery("#route").val(),
-                "sta": jQuery("#stations").val()
-            });
-            history.pushState(
-                "",
-                "",
-                "?" + jQuery.param({
-                    line: jQuery("#route").val(),
-                    sta: jQuery("#stations").val()
-                }));
-
-            console.log(stationName);
-        })
-        const urlParams = new URLSearchParams(window.location.search);
-        const line = urlParams.get('line');
-        const sta = urlParams.get('sta');
-
-        if (line && sta) { // Check that both parameters exist and are not empty
-            document.getElementById("route").value = line;
-            reloadStation(line);
-            document.getElementById("stations").value = sta;
-
-            mtr({
-                'line': line,
-                'sta': sta
-            });
-        } else if (line) {
-            document.getElementById("route").value = line;
-            reloadStation(line);
-        }
-
-    };
-
-
-
-
-    function findStationByCode(stationCode) {
-
-        const station = mtrStationsData.find(
-            (s) => s["Station Code"] === stationCode
-        );
-        if (station) {
-            return {
-                EnglishName: station["English Name"],
-                ChineseName: station["Chinese Name"],
-            };
-        } else {
-            return null; // Station not found
-        }
+      mtr({
+        line: line,
+        sta: sta,
+      });
+    } else if (line) {
+      document.getElementById("route").value = line;
+      reloadStation(line);
     }
+  }
 
-    async function mtr(obj) {
-        jQuery(".mtr").remove();
+  function findStationByCode(stationCode) {
+    const station = mtrStationsData.find(
+      (s) => s["Station Code"] === stationCode
+    );
+    if (station) {
+      return {
+        EnglishName: station["English Name"],
+        ChineseName: station["Chinese Name"],
+      };
+    } else {
+      return null; // Station not found
+    }
+  }
 
-        jQuery.ajax({
-            url: "https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php",
-            data: {
-                line: obj["line"],
-                sta: obj["sta"]
-            },
-            method: "GET",
-            success: function(data) {
+  async function mtr(obj) {
+    jQuery(".mtr").remove();
 
-                jQuery("#stationName").text(findStationByCode(obj['sta'])["ChineseName"]);
-                console.log(obj);
-                console.log(data);
-                console.log(data["data"][obj['line'] + "-" + obj['sta']]);
+    jQuery.ajax({
+      url: "https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php",
+      data: {
+        line: obj["line"],
+        sta: obj["sta"],
+      },
+      method: "GET",
+      success: function (data) {
+        jQuery("#stationName").text(
+          findStationByCode(obj["sta"])["ChineseName"]
+        );
+        console.log(obj);
+        console.log(data);
+        console.log(data["data"][obj["line"] + "-" + obj["sta"]]);
 
-                var checkDir = [];
+        var checkDir = [];
 
-                if (data["data"][obj['line'] + "-" + obj['sta']]["UP"]) {
-                    checkDir.push("UP");
-                }
-                if (data["data"][obj['line'] + "-" + obj['sta']]["DOWN"]) {
-                    checkDir.push("DOWN");
-                }
-                runDirection = {
-                    UP: {
-                        name: "上行",
-                    },
-                    DOWN: {
-                        name: "下行",
-                    },
-                };
-                console.log(checkDir);
+        if (data["data"][obj["line"] + "-" + obj["sta"]]["UP"]) {
+          checkDir.push("UP");
+        }
+        if (data["data"][obj["line"] + "-" + obj["sta"]]["DOWN"]) {
+          checkDir.push("DOWN");
+        }
+        runDirection = {
+          UP: {
+            name: "上行",
+          },
+          DOWN: {
+            name: "下行",
+          },
+        };
+        console.log(checkDir);
 
-                checkDir.forEach((Direction) => {
-                    console.log(Direction);
-                    var upTable = jQuery("<div>", {
-                        class: "table mtr"
-                    });
+        checkDir.forEach((Direction) => {
+          console.log(Direction);
+          var upTable = jQuery("<div>", {
+            class: "table mtr",
+          });
 
-                    //data['data'][line + '-' + station][Direction].forEach(element => {
-                    data["data"][obj['line'] + "-" + obj['sta']][Direction].forEach((element) => {
-                        var upTableRow = jQuery("<div>", {
-                            class: "row align-items-center"
-                        });
+          //data['data'][line + '-' + station][Direction].forEach(element => {
+          data["data"][obj["line"] + "-" + obj["sta"]][Direction].forEach(
+            (element) => {
+              var upTableRow = jQuery("<div>", {
+                class: "row align-items-center",
+              });
 
-                        console.log(element);
-                        // console.log(routeData.routes.find(r => r.short == $('#route').val())['colour']);
+              console.log(element);
+              // console.log(routeData.routes.find(r => r.short == $('#route').val())['colour']);
 
-                        upTableRow.append(
-                            jQuery("<div>", {
-                                class: "col-2 col-sm-2 text-center"
-                            }).html($("<h1>").css({
-                                width: "1.5em",
-                                background: routeData.routes.find(r => r.short == $('#route').val())['colour'],
-                                color: "white",
-                                "border-radius": "1em"
-                            }).append(
-
-                                element["plat"]
-                            ))
-                        );
-                        upTableRow.append(
-                            jQuery("<div>", {
-                                class: "col-6"
-                            }).append(
-                                $("<p>", {
-                                    class: "mb-0 p-0"
-                                }).css({
-                                    "font-size": "2rem"
-                                }).append(findStationByCode(element["dest"])["ChineseName"])
-                            ).append(
-                                $("<p>", {
-                                    class: "mb-0 p-0"
-                                }).css({
-                                    "font-size": "1.2rem"
-                                }).append(findStationByCode(element["dest"])["EnglishName"])
-                            ));
-                        /* upTableRow.append(
+              upTableRow.append(
+                jQuery("<div>", {
+                  class: "col-2 col-sm-2 text-center",
+                }).html(
+                  $("<h1>")
+                    .css({
+                      width: "1.5em",
+                      background: routeData.routes.find(
+                        (r) => r.short == $("#route").val()
+                      )["colour"],
+                      color: "white",
+                      "border-radius": "1em",
+                    })
+                    .append(element["plat"])
+                )
+              );
+              upTableRow.append(
+                jQuery("<div>", {
+                  class: "col-6",
+                })
+                  .append(
+                    $("<p>", {
+                      class: "mb-0 p-0",
+                    })
+                      .css({
+                        "font-size": "2rem",
+                      })
+                      .append(findStationByCode(element["dest"])["ChineseName"])
+                  )
+                  .append(
+                    $("<p>", {
+                      class: "mb-0 p-0",
+                    })
+                      .css({
+                        "font-size": "1.2rem",
+                      })
+                      .append(findStationByCode(element["dest"])["EnglishName"])
+                  )
+              );
+              /* upTableRow.append(
                             jQuery("<div>", {
                                 class: "col-2 eng"
                             }).text(
                                 findStationByCode(element["dest"])["EnglishName"]
                             )
                         ); */
-                        upTableRow.append(
-                            jQuery("<div>", {
-                                class: "col-4 text-end chi"
-                            }).text(
-                                element["ttnt"] + "分鐘 Min"
-                            )
-                        );
-                        /*  upTableRow.append(
+
+              var minDisplay = $("<div>", { class: "row g-2" })
+                .append(
+                  $("<p>", { class: "fs-3 col text-end fw-bold" }).append(
+                    element["ttnt"]
+                  )
+                )
+                .append(
+                  $("<p>", { class: "fs-6 col text-start lh-1" }).append(
+                    "分鐘<br>Mins"
+                  )
+                );
+              upTableRow.append(
+                jQuery("<div>", {
+                  class: "col-4 text-end chi m-0",
+                }).append(minDisplay)
+              );
+
+              /*  upTableRow.append(
                              jQuery("<div>", {
                                  class: "col-2 eng"
                              }).text(
@@ -324,22 +351,21 @@
                              )
                          ); */
 
-
-
-                        upTableRow.appendTo(upTable);
-                    });
-                    var mtrDiv = jQuery("<div>", {
-                        class: "mtr"
-                    });
-                    /*   mtr.append(
+              upTableRow.appendTo(upTable);
+            }
+          );
+          var mtrDiv = jQuery("<div>", {
+            class: "mtr",
+          });
+          /*   mtr.append(
                           jQuery("<h2>").text(findStationByCode(station)["ChineseName"])
                       ); */
-                    mtrDiv.append(jQuery("<h3>").text(runDirection[Direction]["name"]));
-                    jQuery("#mtr_time").append(mtrDiv.append(upTable));
-                });
-            },
+          mtrDiv.append(jQuery("<h3>").text(runDirection[Direction]["name"]));
+          jQuery("#mtr_time").append(mtrDiv.append(upTable));
         });
-    }
-    // Initialize data
-    initialize();
+      },
+    });
+  }
+  // Initialize data
+  initialize();
 </script>
